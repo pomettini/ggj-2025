@@ -24,6 +24,9 @@ assert(tower)
 local ui_button = gfx.image.new("img/ui/T_BTN_Directional.png")
 assert(ui_button)
 
+local ui_hourglass = gfx.imagetable.new("img/ui/T_Spritesheet_Hourglass")
+assert(ui_hourglass)
+
 local KEYS <const> = { 4, 2, 8, 1 }
 local KEYS_ANGLE <const> = { 0, 90, 180, 270 }
 
@@ -50,6 +53,8 @@ local BASIC_SPEED_START <const> = 0.5
 local BASIC_SPEED_INCREMENT <const> = 0.0001
 local BASIC_SPEED_MAX <const> = 1.5
 
+local BLINK_SPEED <const> = 1.0
+
 -- End parameters to tweak
 
 local is_game_running = false
@@ -69,12 +74,14 @@ local crank_current
 local rand_reach_counter
 local rand_value
 
-local blinking_counter
-local is_blinking
-
 local is_blowing
 
+local blink_counter
+local is_blinking
+
 local basic_speed
+
+local hourglass_counter
 
 math.randomseed(playdate.getSecondsSinceEpoch())
 
@@ -119,6 +126,11 @@ local function reset()
 
     basic_speed = BASIC_SPEED_START
 
+    blink_counter = 0
+    is_blinking = false
+
+    hourglass_counter = 0
+
     is_game_running = true
 end
 
@@ -152,6 +164,17 @@ local function process_increment()
 
     if basic_speed <= BASIC_SPEED_MAX then
         basic_speed += BASIC_SPEED_INCREMENT
+    end
+
+    blink_counter += BLINK_SPEED
+    if blink_counter >= 10 then
+        is_blinking = not is_blinking
+        blink_counter = 0
+    end
+
+    hourglass_counter += 5
+    if hourglass_counter >= 180 then
+        hourglass_counter = -90
     end
 end
 
@@ -216,17 +239,19 @@ function pd.update()
         human:drawImage(human_id, 0, 0)
     end
 
-    for i = 1, 6 do
-        tower:drawImage(2, 305, 240 - (240 * crank_current) + (37 * i))
+    if (crank_current >= 0.1 and crank_current <= 0.9) or is_blinking or not is_game_running then
+        for i = 1, 6 do
+            tower:drawImage(2, 305, 240 - (240 * crank_current) + (37 * i))
+        end
+        tower:drawImage(1, 305, 240 - (240 * crank_current))
+        tower:drawImage(3, 305, 203)
     end
-
-    tower:drawImage(1, 305, 240 - (240 * crank_current))
-
-    tower:drawImage(3, 305, 203)
 
     stick:draw(158, 130)
 
-    bubble:drawScaled(180, 170 - (60 * noise_current), noise_current)
+    if (noise_current >= 0.1 and noise_current <= 0.9) or is_blinking or not is_game_running then
+        bubble:drawScaled(180, 170 - (60 * noise_current), noise_current)
+    end
 
     gfx.setColor(gfx.kColorWhite)
     gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
@@ -236,6 +261,16 @@ function pd.update()
         if pad_current_key <= i then
             ui_button:drawRotated((40 * i) - 10, 30, KEYS_ANGLE[pad_combination[i]])
         end
+    end
+
+    if hourglass_counter <= -60 then
+        ui_hourglass:getImage(1):drawRotated(40, 200, 0)
+    elseif hourglass_counter <= -30 then
+        ui_hourglass:getImage(2):drawRotated(40, 200, 0)
+    elseif hourglass_counter <= 0 then
+        ui_hourglass:getImage(3):drawRotated(40, 200, 0)
+    else
+        ui_hourglass:getImage(1):drawRotated(40, 200, 180 + hourglass_counter)
     end
 
     if is_game_running == false then

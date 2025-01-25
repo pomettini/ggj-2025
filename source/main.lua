@@ -194,7 +194,7 @@ function pd.update()
 
     stick:draw(133, 130)
 
-    bubble:drawScaled(180, 120, noise_current)
+    bubble:drawScaled(180, 180 - (60 * noise_current), noise_current)
 
     gfx.setColor(gfx.kColorWhite)
     gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)

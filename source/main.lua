@@ -32,9 +32,7 @@ local KEYS_ANGLE <const> = { 0, 90, 180, 270 }
 
 -- Start parameters to tweak
 
-local PAD_START <const> = 1
-local PAD_GAIN <const> = 0.15
-local PAD_DECAY <const> = 0.001
+local PAD_START <const> = 0
 local PAD_MAX_INPUTS <const> = 5
 
 local NOISE_START <const> = 0.5
@@ -46,6 +44,8 @@ local CRANK_START <const> = 0.5
 local CRANK_MULTIPLIER <const> = 0.001
 local CRANK_DECAY <const> = 0.001
 
+local AGING_START <const> = 0.5
+
 local RANDOM_INTENSITY <const> = 5
 local RANDOM_VARIANCE <const> = 100
 
@@ -56,6 +56,8 @@ local BASIC_SPEED_MAX <const> = 1.5
 local BLINK_SPEED <const> = 1.0
 
 -- End parameters to tweak
+
+local HOURGLASS_SCALE <const> = 0.8
 
 local is_game_running = false
 
@@ -70,6 +72,8 @@ local noise_current
 
 local crank_amount
 local crank_current
+
+local aging_speed
 
 local rand_reach_counter
 local rand_value
@@ -119,6 +123,8 @@ local function reset()
     crank_amount = 0
     crank_current = CRANK_START
 
+    aging_speed = AGING_START
+
     rand_reach_counter = 0
     rand_value = 0
 
@@ -144,7 +150,7 @@ local function process_inputs()
         end
     end
     if pad_current_key >= #pad_combination + 1 then
-        pad_current += PAD_GAIN
+        aging_speed -= 0.15
         generate_pad_combination()
         pad_current_key = 1
     end
@@ -172,22 +178,22 @@ local function process_increment()
         blink_counter = 0
     end
 
-    hourglass_counter += 5
+    hourglass_counter += (10 * aging_speed) * basic_speed
     if hourglass_counter >= 180 then
         hourglass_counter = -90
     end
+
+    aging_speed += 0.0001 * basic_speed
+    pad_current += (aging_speed * 0.001)
 end
 
 local function process_decay(rand)
-    pad_current -= PAD_DECAY * basic_speed
     noise_current -= NOISE_DECAY * basic_speed
     crank_current -= (CRANK_DECAY * rand) * basic_speed
 end
 
 local function process_clamping()
-    pad_current = math.clamp(pad_current, 0, 1)
-    noise_current = math.clamp(noise_current, 0, 1)
-    crank_current = math.clamp(crank_current, 0, 1)
+    aging_speed = math.clamp(aging_speed, 0.01, 1)
 end
 
 local function check_game_over()
@@ -199,6 +205,18 @@ local function check_game_over()
     end
     if crank_current <= 0 or crank_current >= 1 then
         is_game_running = false
+    end
+end
+
+local function draw_hourglass()
+    if hourglass_counter <= -60 then
+        ui_hourglass:getImage(1):drawRotated(35, 205, 0, HOURGLASS_SCALE)
+    elseif hourglass_counter <= -30 then
+        ui_hourglass:getImage(2):drawRotated(35, 205, 0, HOURGLASS_SCALE)
+    elseif hourglass_counter <= 0 then
+        ui_hourglass:getImage(3):drawRotated(35, 205, 0, HOURGLASS_SCALE)
+    else
+        ui_hourglass:getImage(1):drawRotated(35, 205, 180 + hourglass_counter, HOURGLASS_SCALE)
     end
 end
 
@@ -216,7 +234,7 @@ function pd.update()
         process_inputs()
         process_increment()
         process_decay(rand_value)
-        -- process_clamping()
+        process_clamping()
         check_game_over()
     else
         local _, pressed, _ = pd.getButtonState()
@@ -231,7 +249,7 @@ function pd.update()
     -- printTable(test)
 
     if is_game_running then
-        local human_id = 4 - (math.floor(pad_current * 4) + 1)
+        local human_id = math.floor(pad_current * 4) + 1
         human_id = math.clamp(human_id, 1, 4)
         if is_blowing then
             human_id += 4
@@ -263,14 +281,8 @@ function pd.update()
         end
     end
 
-    if hourglass_counter <= -60 then
-        ui_hourglass:getImage(1):drawRotated(40, 200, 0)
-    elseif hourglass_counter <= -30 then
-        ui_hourglass:getImage(2):drawRotated(40, 200, 0)
-    elseif hourglass_counter <= 0 then
-        ui_hourglass:getImage(3):drawRotated(40, 200, 0)
-    else
-        ui_hourglass:getImage(1):drawRotated(40, 200, 180 + hourglass_counter)
+    if aging_speed <= 0.9 or is_blinking or not is_game_running then
+        draw_hourglass()
     end
 
     if is_game_running == false then

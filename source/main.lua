@@ -6,7 +6,12 @@ local pd <const> = playdate
 local gfx <const> = playdate.graphics
 local snd <const> = playdate.sound
 
-local bg_tower = gfx.image.new("img/T_Tower_BG.png")
+-- Image assets
+
+local tt_turn_device = gfx.image.new("img/ui/T_Tutorial_1.png")
+assert(tt_turn_device)
+
+local bg_tower = gfx.image.new("img/T_Tower_BG")
 assert(bg_tower)
 
 local human = gfx.imagetable.new("img/T_Spritesheet_Human")
@@ -21,14 +26,48 @@ assert(bubble)
 local tower = gfx.imagetable.new("img/T_Spritesheet_Tower")
 assert(tower)
 
-local ui_button = gfx.image.new("img/ui/T_BTN_Directional.png")
+local ui_button = gfx.image.new("img/ui/T_BTN_Directional")
 assert(ui_button)
 
 local ui_hourglass = gfx.imagetable.new("img/ui/T_Spritesheet_Hourglass")
 assert(ui_hourglass)
 
+-- Sound assets
+
+local music_main = snd.sampleplayer.new("sfx/mega")
+assert(music_main)
+
+local music_game_over = snd.sampleplayer.new("sfx/morte")
+assert(music_game_over)
+
+local sfx_factory = snd.sampleplayer.new("sfx/fabbrica")
+assert(sfx_factory)
+
+local sfx_tower_crash = snd.sampleplayer.new("sfx/crollo")
+assert(sfx_tower_crash)
+
+local sfx_input = snd.sampleplayer.new("sfx/input")
+assert(sfx_input)
+
+local sfx_fault = snd.sampleplayer.new("sfx/errore")
+assert(sfx_fault)
+
+local sfx_confirm = snd.sampleplayer.new("sfx/conferma")
+assert(sfx_confirm)
+
+local sfx_bubble = snd.sampleplayer.new("sfx/bolla")
+assert(sfx_bubble)
+
+local sfx_bubble_explode = snd.sampleplayer.new("sfx/scoppia")
+assert(sfx_bubble_explode)
+
+local sfx_smoke = snd.sampleplayer.new("sfx/fumo")
+assert(sfx_bubble)
+
 local KEYS <const> = { 4, 2, 8, 1 }
 local KEYS_ANGLE <const> = { 0, 90, 180, 270 }
+
+local HOURGLASS_SCALE <const> = 0.8
 
 -- Start parameters to tweak
 
@@ -56,8 +95,6 @@ local BASIC_SPEED_MAX <const> = 1.5
 local BLINK_SPEED <const> = 1.0
 
 -- End parameters to tweak
-
-local HOURGLASS_SCALE <const> = 0.8
 
 local is_game_running = false
 
@@ -144,12 +181,15 @@ local function process_inputs()
     local _, pressed, _ = pd.getButtonState()
     if pressed ~= 0 then
         if pressed == KEYS[pad_combination[pad_current_key]] then
+            sfx_input:play()
             pad_current_key += 1
         else
+            sfx_fault:play()
             pad_current_key = 1
         end
     end
     if pad_current_key >= #pad_combination + 1 then
+        sfx_confirm:play()
         aging_speed -= 0.15
         generate_pad_combination()
         pad_current_key = 1
@@ -157,13 +197,20 @@ local function process_inputs()
 
     noise_amount = math.clamp(snd.micinput.getLevel(), 0, math.maxinteger)
     _, crank_amount = pd.getCrankChange()
+    if math.abs(crank_amount) > 1 then
+        sfx_factory:play(0)
+    else
+        sfx_factory:stop()
+    end
 end
 
 local function process_increment()
     if noise_amount >= NOISE_TOLERANCE then
         noise_current += (noise_amount * NOISE_MULTIPLIER) * basic_speed
+        sfx_bubble:play(0)
         is_blowing = true
     else
+        sfx_bubble:stop()
         is_blowing = false
     end
     crank_current += (crank_amount * CRANK_MULTIPLIER) * basic_speed
@@ -196,27 +243,73 @@ local function process_clamping()
     aging_speed = math.clamp(aging_speed, 0.01, 1)
 end
 
+local function play_game_over_music()
+    music_game_over:play(1)
+end
+
 local function check_game_over()
     if pad_current <= 0 then
+        play_game_over_music()
         is_game_running = false
     end
     if noise_current <= 0 or noise_current >= 1 then
+        play_game_over_music()
+        sfx_bubble_explode:play()
         is_game_running = false
     end
     if crank_current <= 0 or crank_current >= 1 then
+        play_game_over_music()
+        sfx_tower_crash:play()
         is_game_running = false
     end
 end
 
+local function draw_human()
+    if is_game_running then
+        local human_id = math.floor(pad_current * 4) + 1
+        human_id = math.clamp(human_id, 1, 4)
+        if is_blowing then
+            human_id += 4
+        end
+        human:drawImage(human_id, 0, 0)
+    end
+end
+
+local function draw_tower()
+    if (crank_current >= 0.1 and crank_current <= 0.9) or is_blinking or not is_game_running then
+        for i = 1, 6 do
+            tower:drawImage(2, 305, 240 - (240 * crank_current) + (37 * i))
+        end
+        tower:drawImage(1, 305, 240 - (240 * crank_current))
+        tower:drawImage(3, 305, 203)
+    end
+end
+
+local function draw_bubble()
+    if (noise_current >= 0.1 and noise_current <= 0.9) or is_blinking or not is_game_running then
+        bubble:drawScaled(180, 170 - (60 * noise_current), noise_current)
+    end
+end
+
+local function draw_keys()
+    for i = 1, #pad_combination do
+        if pad_current_key <= i then
+            ui_button:drawRotated((40 * i) - 10, 30, KEYS_ANGLE[pad_combination[i]])
+        end
+    end
+end
+
 local function draw_hourglass()
-    if hourglass_counter <= -60 then
-        ui_hourglass:getImage(1):drawRotated(35, 205, 0, HOURGLASS_SCALE)
-    elseif hourglass_counter <= -30 then
-        ui_hourglass:getImage(2):drawRotated(35, 205, 0, HOURGLASS_SCALE)
-    elseif hourglass_counter <= 0 then
-        ui_hourglass:getImage(3):drawRotated(35, 205, 0, HOURGLASS_SCALE)
-    else
-        ui_hourglass:getImage(1):drawRotated(35, 205, 180 + hourglass_counter, HOURGLASS_SCALE)
+    if aging_speed <= 0.9 or is_blinking or not is_game_running then
+        if hourglass_counter <= -60 then
+            ui_hourglass:getImage(1):drawRotated(35, 205, 0, HOURGLASS_SCALE)
+        elseif hourglass_counter <= -30 then
+            ui_hourglass:getImage(2):drawRotated(35, 205, 0, HOURGLASS_SCALE)
+        elseif hourglass_counter <= 0 then
+            ui_hourglass:getImage(3):drawRotated(35, 205, 0, HOURGLASS_SCALE)
+        else
+            ui_hourglass:getImage(1):drawRotated(35, 205, 180 + hourglass_counter, HOURGLASS_SCALE)
+        end
     end
 end
 
@@ -226,10 +319,18 @@ pd.display.setRefreshRate(50)
 
 reset()
 
+is_game_running = false
+
 function pd.update()
     gfx.clear(playdate.graphics.kColorBlack)
 
     if is_game_running then
+        if not music_main:isPlaying() then
+            music_main:play(0)
+        end
+        if music_game_over:isPlaying() then
+            music_game_over:stop()
+        end
         process_random_counter()
         process_inputs()
         process_increment()
@@ -237,6 +338,9 @@ function pd.update()
         process_clamping()
         check_game_over()
     else
+        if music_main:isPlaying() then
+            music_main:stop()
+        end
         local _, pressed, _ = pd.getButtonState()
         if pressed >= 16 then
             reset()
@@ -248,44 +352,22 @@ function pd.update()
     -- test = { math.floor(0.1 * 4) + 1, math.floor(0.33 * 4) + 1, math.floor(0.66 * 4) + 1, math.floor(0.9 * 4) + 1 }
     -- printTable(test)
 
-    if is_game_running then
-        local human_id = math.floor(pad_current * 4) + 1
-        human_id = math.clamp(human_id, 1, 4)
-        if is_blowing then
-            human_id += 4
-        end
-        human:drawImage(human_id, 0, 0)
-    end
-
-    if (crank_current >= 0.1 and crank_current <= 0.9) or is_blinking or not is_game_running then
-        for i = 1, 6 do
-            tower:drawImage(2, 305, 240 - (240 * crank_current) + (37 * i))
-        end
-        tower:drawImage(1, 305, 240 - (240 * crank_current))
-        tower:drawImage(3, 305, 203)
-    end
+    draw_human()
+    draw_tower()
 
     stick:draw(158, 130)
 
-    if (noise_current >= 0.1 and noise_current <= 0.9) or is_blinking or not is_game_running then
-        bubble:drawScaled(180, 170 - (60 * noise_current), noise_current)
-    end
+    draw_bubble()
 
     gfx.setColor(gfx.kColorWhite)
     gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
     gfx.drawCircleInRect(180, 110, 110, 110)
 
-    for i = 1, #pad_combination do
-        if pad_current_key <= i then
-            ui_button:drawRotated((40 * i) - 10, 30, KEYS_ANGLE[pad_combination[i]])
-        end
-    end
-
-    if aging_speed <= 0.9 or is_blinking or not is_game_running then
-        draw_hourglass()
-    end
+    draw_keys()
+    draw_hourglass()
 
     if is_game_running == false then
+        sfx_factory:stop()
         human:drawImage(9, 0, 0)
         gfx.setColor(gfx.kColorXOR)
         gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer8x8)

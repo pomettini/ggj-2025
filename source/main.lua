@@ -33,25 +33,27 @@ local PAD_DECAY <const> = 0.001
 local NOISE_DECAY <const> = 0.001
 local CRANK_DECAY <const> = 0.001
 
+local NOISE_TOLERANCE <const> = 0.1
+
 -- End parameters to tweak
 
 local is_game_running = false
 
 -- 1-4 NESO
-local pad_combination = {}
-local pad_current_key = 1
+local pad_combination
+local pad_current_key
 
-local pad_amount = 0
-local pad_current = PAD_START
+local pad_amount
+local pad_current
 
-local noise_amount = 0
-local noise_current = NOISE_START
+local noise_amount
+local noise_current
 
-local crank_amount = 0
-local crank_current = CRANK_START
+local crank_amount
+local crank_current
 
-local rand_reach_counter = 0
-local rand_value = 0
+local rand_reach_counter
+local rand_value
 
 math.randomseed(playdate.getSecondsSinceEpoch())
 
@@ -76,6 +78,7 @@ local function generate_pad_combination()
 end
 
 local function reset()
+    pad_combination = {}
     generate_pad_combination()
     pad_current_key = 1
 
@@ -115,7 +118,9 @@ end
 
 local function process_increment()
     pad_current += pad_amount * 0.01
-    noise_current += noise_amount * 0.1
+    if noise_amount >= NOISE_TOLERANCE then
+        noise_current += noise_amount * 0.1
+    end
     crank_current += crank_amount * 0.001
 end
 
@@ -147,6 +152,8 @@ snd.micinput.startListening()
 
 pd.display.setRefreshRate(50)
 
+reset()
+
 function pd.update()
     gfx.clear(playdate.graphics.kColorBlack)
 
@@ -168,13 +175,20 @@ function pd.update()
     -- gfx.fillRect(133, 0, 133, 240 - (240 * noise_current))
     -- gfx.fillRect(266, 0, 134, 240 - (240 * crank_current))
 
-    human:drawImage(1, 0, 0)
+    -- test = { math.floor(0.1 * 4) + 1, math.floor(0.33 * 4) + 1, math.floor(0.66 * 4) + 1, math.floor(0.9 * 4) + 1 }
+    -- printTable(test)
+
+    local human_id = 4 - (math.floor(pad_current * 4) + 1)
+    human:drawImage(math.clamp(human_id, 1, 4), 0, 0)
 
     for i = 1, 6 do
         tower:drawImage(2, 305, 240 - (240 * crank_current) + (37 * i))
     end
 
     tower:drawImage(1, 305, 240 - (240 * crank_current))
+
+    gfx.setColor(gfx.kColorBlack)
+    gfx.fillRect(305, 203, 95, 37)
 
     tower:drawImage(3, 305, 203)
 
@@ -183,7 +197,7 @@ function pd.update()
     bubble:drawScaled(180, 120, noise_current)
 
     gfx.setColor(gfx.kColorWhite)
-    gfx.setDitherPattern(0.75, gfx.image.kDitherTypeBayer8x8)
+    gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
     gfx.drawCircleInRect(180, 120, 110, 110)
 
     gfx.setImageDrawMode(gfx.kDrawModeNXOR)

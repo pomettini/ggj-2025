@@ -18,22 +18,27 @@ assert(bubble)
 local tower = gfx.imagetable.new("img/T_Spritesheet_Tower")
 assert(tower)
 
-local PAD_START <const> = 0.5
-local NOISE_START <const> = 0.5
-local CRANK_START <const> = 0.5
-
 local KEYS <const> = { 4, 2, 8, 1 }
 local KEYS_GFX <const> = { "^", ">", "v", "<" }
 
 -- Start parameters to tweak
 
+local PAD_START <const> = 0.5
 local PAD_GAIN <const> = 0.15
-
 local PAD_DECAY <const> = 0.001
+local PAD_MAX_INPUTS <const> = 5
+
+local NOISE_START <const> = 0.5
+local NOISE_MULTIPLIER <const> = 0.05
 local NOISE_DECAY <const> = 0.001
+local NOISE_TOLERANCE <const> = 0.1
+
+local CRANK_START <const> = 0.5
+local CRANK_MULTIPLIER <const> = 0.001
 local CRANK_DECAY <const> = 0.001
 
-local NOISE_TOLERANCE <const> = 0.1
+local RANDOM_INTENSITY <const> = 5
+local RANDOM_VARIANCE <const> = 100
 
 -- End parameters to tweak
 
@@ -64,13 +69,14 @@ end
 local function process_random_counter()
     rand_reach_counter -= 1
     if rand_reach_counter <= 0 then
-        rand_value = math.random(-5, 5)
-        rand_reach_counter = math.random(0, 100)
+        rand_value = math.random(-RANDOM_INTENSITY, RANDOM_INTENSITY)
+        rand_reach_counter = math.random(0, RANDOM_VARIANCE)
     end
 end
 
 local function generate_pad_combination()
     local curr_elements = #pad_combination + 1
+    curr_elements = math.clamp(curr_elements, 0, PAD_MAX_INPUTS)
     pad_combination = {}
     for i = 1, curr_elements do
         table.insert(pad_combination, math.random(1, 4))
@@ -117,11 +123,10 @@ local function process_inputs()
 end
 
 local function process_increment()
-    pad_current += pad_amount * 0.01
     if noise_amount >= NOISE_TOLERANCE then
-        noise_current += noise_amount * 0.1
+        noise_current += noise_amount * NOISE_MULTIPLIER
     end
-    crank_current += crank_amount * 0.001
+    crank_current += crank_amount * CRANK_MULTIPLIER
 end
 
 local function process_decay(rand)

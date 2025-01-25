@@ -6,6 +6,9 @@ local pd <const> = playdate
 local gfx <const> = playdate.graphics
 local snd <const> = playdate.sound
 
+local bg_tower = gfx.image.new("img/T_Tower_BG.png")
+assert(bg_tower)
+
 local human = gfx.imagetable.new("img/T_Spritesheet_Human")
 assert(human)
 
@@ -18,12 +21,15 @@ assert(bubble)
 local tower = gfx.imagetable.new("img/T_Spritesheet_Tower")
 assert(tower)
 
+local ui_button = gfx.image.new("img/ui/T_BTN_Directional.png")
+assert(ui_button)
+
 local KEYS <const> = { 4, 2, 8, 1 }
-local KEYS_GFX <const> = { "^", ">", "v", "<" }
+local KEYS_ANGLE <const> = { 0, 90, 180, 270 }
 
 -- Start parameters to tweak
 
-local PAD_START <const> = 0.5
+local PAD_START <const> = 1
 local PAD_GAIN <const> = 0.15
 local PAD_DECAY <const> = 0.001
 local PAD_MAX_INPUTS <const> = 5
@@ -39,6 +45,10 @@ local CRANK_DECAY <const> = 0.001
 
 local RANDOM_INTENSITY <const> = 5
 local RANDOM_VARIANCE <const> = 100
+
+local BASIC_SPEED_START <const> = 0.5
+local BASIC_SPEED_INCREMENT <const> = 0.0001
+local BASIC_SPEED_MAX <const> = 1.5
 
 -- End parameters to tweak
 
@@ -63,6 +73,8 @@ local blinking_counter
 local is_blinking
 
 local is_blowing
+
+local basic_speed
 
 math.randomseed(playdate.getSecondsSinceEpoch())
 
@@ -105,6 +117,8 @@ local function reset()
 
     is_blowing = false
 
+    basic_speed = BASIC_SPEED_START
+
     is_game_running = true
 end
 
@@ -129,18 +143,22 @@ end
 
 local function process_increment()
     if noise_amount >= NOISE_TOLERANCE then
-        noise_current += noise_amount * NOISE_MULTIPLIER
+        noise_current += (noise_amount * NOISE_MULTIPLIER) * basic_speed
         is_blowing = true
     else
         is_blowing = false
     end
-    crank_current += crank_amount * CRANK_MULTIPLIER
+    crank_current += (crank_amount * CRANK_MULTIPLIER) * basic_speed
+
+    if basic_speed <= BASIC_SPEED_MAX then
+        basic_speed += BASIC_SPEED_INCREMENT
+    end
 end
 
 local function process_decay(rand)
-    pad_current -= PAD_DECAY
-    noise_current -= NOISE_DECAY
-    crank_current -= CRANK_DECAY * rand
+    pad_current -= PAD_DECAY * basic_speed
+    noise_current -= NOISE_DECAY * basic_speed
+    crank_current -= (CRANK_DECAY * rand) * basic_speed
 end
 
 local function process_clamping()
@@ -150,7 +168,7 @@ local function process_clamping()
 end
 
 local function check_game_over()
-    if pad_current >= 1 then
+    if pad_current <= 0 then
         is_game_running = false
     end
     if noise_current <= 0 or noise_current >= 1 then
@@ -184,9 +202,7 @@ function pd.update()
         end
     end
 
-    -- gfx.fillRect(0, 0, 133, 240 - (240 * pad_current))
-    -- gfx.fillRect(133, 0, 133, 240 - (240 * noise_current))
-    -- gfx.fillRect(266, 0, 134, 240 - (240 * crank_current))
+    bg_tower:draw(264, 96)
 
     -- test = { math.floor(0.1 * 4) + 1, math.floor(0.33 * 4) + 1, math.floor(0.66 * 4) + 1, math.floor(0.9 * 4) + 1 }
     -- printTable(test)
@@ -206,9 +222,6 @@ function pd.update()
 
     tower:drawImage(1, 305, 240 - (240 * crank_current))
 
-    gfx.setColor(gfx.kColorBlack)
-    gfx.fillRect(305, 203, 95, 37)
-
     tower:drawImage(3, 305, 203)
 
     stick:draw(158, 130)
@@ -219,15 +232,11 @@ function pd.update()
     gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
     gfx.drawCircleInRect(180, 110, 110, 110)
 
-    gfx.setImageDrawMode(gfx.kDrawModeNXOR)
-
     for i = 1, #pad_combination do
         if pad_current_key <= i then
-            gfx.drawText(KEYS_GFX[pad_combination[i]], 10 + (20 * i), 30)
+            ui_button:drawRotated((40 * i) - 10, 30, KEYS_ANGLE[pad_combination[i]])
         end
     end
-
-    gfx.setImageDrawMode(gfx.kDrawModeBlackTransparent)
 
     if is_game_running == false then
         human:drawImage(9, 0, 0)

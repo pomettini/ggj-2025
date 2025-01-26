@@ -10,7 +10,6 @@ local snd <const> = playdate.sound
 
 local nontendo = gfx.font.new("font/Nontendo-Bold")
 assert(nontendo)
-gfx.setFont(nontendo)
 
 local nontendo_2x = gfx.font.new("font/Nontendo-Bold-2x")
 assert(nontendo_2x)
@@ -129,7 +128,7 @@ local HOURGLASS_SCALE <const> = 0.8
 -- Start parameters to tweak
 
 local PAD_START <const> = 0
-local PAD_MAX_INPUTS <const> = 5
+local PAD_MAX_INPUTS <const> = 6
 
 local NOISE_START <const> = 0.5
 local NOISE_MULTIPLIER <const> = 0.05
@@ -208,7 +207,7 @@ local function generate_pad_combination()
     -- local curr_elements = #pad_combination + 1
     -- curr_elements = math.clamp(curr_elements, 0, PAD_MAX_INPUTS)
     local elements_to_add = math.floor(pad_current * 4) + 2
-    elements_to_add = math.clamp(elements_to_add, 2, 6)
+    elements_to_add = math.clamp(elements_to_add, 2, PAD_MAX_INPUTS)
     pad_combination = {}
     for i = 1, elements_to_add do
         table.insert(pad_combination, math.random(1, 4))
@@ -249,10 +248,16 @@ local function reset()
     is_game_running = true
 end
 
+local function reset_tutorial()
+    is_game_running = false
+    tutorial_step = 1
+    tutorial_completion = 0
+end
+
 local function process_inputs()
-    local _, pressed, _ = pd.getButtonState()
-    if pressed > 0 and pressed < 9 then
-        if pressed == KEYS[pad_combination[pad_current_key]] then
+    local _, _, released = pd.getButtonState()
+    if released > 0 and released < 9 then
+        if released == KEYS[pad_combination[pad_current_key]] then
             sfx_input:play()
             pad_current_key += 1
         else
@@ -371,9 +376,14 @@ local function draw_bubble()
 end
 
 local function draw_keys()
+    local current, _, _ = pd.getButtonState()
     for i = 1, #pad_combination do
         if pad_current_key <= i then
-            ui_button:drawRotated((40 * i) - 10, 30, KEYS_ANGLE[pad_combination[i]])
+            if i == pad_current_key and (current > 0 and current <= 8) then
+                ui_button:drawRotated((40 * i) - 10, 30, KEYS_ANGLE[pad_combination[i]], 0.5)
+            else
+                ui_button:drawRotated((40 * i) - 10, 30, KEYS_ANGLE[pad_combination[i]], 1)
+            end
         end
     end
 end
@@ -396,6 +406,7 @@ local function process_tutorial(is_on, multiplier)
     if is_on then
         tutorial_completion += 0.02 * multiplier
         if tutorial_completion >= 1 then
+            reset()
             tutorial_completion = 0
             tutorial_step += 1
         end
@@ -437,6 +448,7 @@ pd.startAccelerometer()
 pd.display.setRefreshRate(50)
 
 reset()
+reset_tutorial()
 
 is_game_running = false
 
@@ -465,9 +477,14 @@ function pd.update()
             if music_main:isPlaying() then
                 music_main:stop()
             end
-            local _, pressed, _ = pd.getButtonState()
-            if pressed >= 16 and tutorial_step > 5 then
+            local _, _, released = pd.getButtonState()
+            -- A button
+            if released == 32 and tutorial_step > 5 then
                 reset()
+                -- B button
+            elseif released == 16 and tutorial_step > 5 then
+                reset()
+                reset_tutorial()
             end
         end
 
@@ -501,6 +518,7 @@ function pd.update()
     -- tutorial_step = 9
 
     if tutorial_step == 1 then
+        gfx.setFont(nontendo)
         local _, y, _ = pd.readAccelerometer()
         if pd.accelerometerIsRunning() then
             process_tutorial(y >= 0.40 and y <= 0.50, 1)
@@ -511,7 +529,7 @@ function pd.update()
         gfx.drawTextAligned("Hold your Playdate like this!", 200, 195, kTextAlignment.center)
         draw_bubble_tutorial()
     elseif tutorial_step == 2 then
-        process_tutorial(true, 0.25)
+        process_tutorial(true, 0.2)
         draw_base_panel_tutorial()
         tt_dir_arrows:drawCentered(200, 105)
         gfx.drawTextAligned("Use the correct sequence on the d-pad\nto slow the aging process", 200, 180,
@@ -525,12 +543,12 @@ function pd.update()
         process_decay(rand_value)
         process_clamping()
         -- end of hack
-        process_tutorial(true, 0.33)
+        process_tutorial(true, 0.2)
         draw_human()
         draw_keys()
         draw_hourglass()
     elseif tutorial_step == 4 then
-        process_tutorial(true, 0.33)
+        process_tutorial(true, 0.2)
         draw_base_panel_tutorial()
         tt_mic_blow:drawCentered(200, 120)
         gfx.drawTextAligned("Blow into the mic to keep the bubble inflated!", 200, 195, kTextAlignment.center)
@@ -543,10 +561,10 @@ function pd.update()
         process_decay(rand_value)
         process_clamping()
         -- end of hack
-        process_tutorial(true, 0.33)
+        process_tutorial(true, 0.2)
         draw_bubble()
     elseif tutorial_step == 6 then
-        process_tutorial(true, 0.33)
+        process_tutorial(true, 0.2)
         draw_base_panel_tutorial()
         tt_turn_crank:drawCentered(200, 100)
         gfx.drawTextAligned("Turn the crank clock and counterclockwise to\nbalance industrial growth!", 200, 180,
@@ -560,7 +578,7 @@ function pd.update()
         process_decay(rand_value)
         process_clamping()
         -- end of hack
-        process_tutorial(true, 0.33)
+        process_tutorial(true, 0.2)
         draw_tower()
     elseif tutorial_step == 8 then
         reset()

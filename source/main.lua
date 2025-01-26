@@ -44,7 +44,7 @@ assert(bg_tower_ruins)
 local human = gfx.imagetable.new("img/T_Spritesheet_Human")
 assert(human)
 
-local stick = gfx.image.new("img/T_Stick.png")
+local stick = gfx.image.new("img/T_Stick")
 assert(stick)
 
 local bubble = gfx.image.new("img/T_Bubble")
@@ -64,6 +64,9 @@ assert(ui_btn_a)
 
 local ui_gameover = gfx.image.new("img/ui/T_GameOver")
 assert(ui_gameover)
+
+local ui_bg_factories = gfx.image.new("img/T_BG_Factories.png")
+assert(ui_bg_factories)
 
 -- Sound assets
 
@@ -124,7 +127,7 @@ local RANDOM_INTENSITY <const> = 5
 local RANDOM_VARIANCE <const> = 100
 
 local BASIC_SPEED_START <const> = 0.5
-local BASIC_SPEED_INCREMENT <const> = 0.0001
+local BASIC_SPEED_INCREMENT <const> = 0.0002
 local BASIC_SPEED_MAX <const> = 1.5
 
 local BLINK_SPEED <const> = 1.0
@@ -412,7 +415,7 @@ function pd.update()
     gfx.clear(gfx.kColorBlack)
 
     if is_game_running and not is_in_tutorial() then
-        score = math.floor(pd.getElapsedTime() * 2)
+        score = math.floor(pd.getElapsedTime() * 2 * basic_speed)
     end
 
     if tutorial_step > 8 then
@@ -438,6 +441,8 @@ function pd.update()
                 reset()
             end
         end
+
+        ui_bg_factories:draw(0, 74)
 
         draw_human()
         draw_tower()
@@ -469,7 +474,7 @@ function pd.update()
         ui_btn_a:drawRotated(240, 210, 0, 0.75)
     end
 
-    tutorial_step = 9
+    -- tutorial_step = 9
 
     if tutorial_step == 1 then
         local _, y, _ = pd.readAccelerometer()

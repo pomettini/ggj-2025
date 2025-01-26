@@ -460,12 +460,8 @@ function pd.update()
         draw_human()
         draw_tower()
         draw_bubble()
-
-        -- gfx.setColor(gfx.kColorWhite)
-        -- gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
-        -- gfx.drawCircleInRect(180, 110, 110, 110)
-
         draw_keys()
+        draw_hourglass()
         draw_score()
     end
 
@@ -505,6 +501,7 @@ function pd.update()
         process_tutorial(true, 0.33)
         draw_human()
         draw_keys()
+        draw_hourglass()
     elseif tutorial_step == 4 then
         process_tutorial(true, 0.33)
         draw_base_panel_tutorial()

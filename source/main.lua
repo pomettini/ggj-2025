@@ -512,9 +512,17 @@ function pd.update()
         process_tutorial(true, 0.25)
         draw_base_panel_tutorial()
         tt_dir_arrows:drawCentered(200, 105)
-        gfx.drawTextAligned("Use the correct sequence on the d-pad\nto slow the aging process", 200, 180, kTextAlignment.center)
+        gfx.drawTextAligned("Use the correct sequence on the d-pad\nto slow the aging process", 200, 180,
+            kTextAlignment.center)
     elseif tutorial_step == 3 then
         -- Tutorial pad
+        -- start hack
+        process_random_counter()
+        process_inputs()
+        process_increment()
+        process_decay(rand_value)
+        process_clamping()
+        -- end of hack
         process_tutorial(true, 0.33)
         draw_human()
         draw_keys()
@@ -526,6 +534,13 @@ function pd.update()
         gfx.drawTextAligned("Blow into the mic to keep the bubble inflated!", 200, 195, kTextAlignment.center)
     elseif tutorial_step == 5 then
         -- Tutorial bubble
+        -- start hack
+        process_random_counter()
+        process_inputs()
+        process_increment()
+        process_decay(rand_value)
+        process_clamping()
+        -- end of hack
         process_tutorial(true, 0.33)
         draw_bubble()
     elseif tutorial_step == 6 then
@@ -536,6 +551,13 @@ function pd.update()
             kTextAlignment.center)
     elseif tutorial_step == 7 then
         -- Tutorial crank
+        -- start hack
+        process_random_counter()
+        process_inputs()
+        process_increment()
+        process_decay(rand_value)
+        process_clamping()
+        -- end of hack
         process_tutorial(true, 0.33)
         draw_tower()
     elseif tutorial_step == 8 then

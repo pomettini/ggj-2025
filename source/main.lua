@@ -6,11 +6,16 @@ local pd <const> = playdate
 local gfx <const> = playdate.graphics
 local snd <const> = playdate.sound
 
--- Image assets
+-- Font
 
 local nontendo = gfx.font.new("font/Nontendo-Bold")
 assert(nontendo)
 gfx.setFont(nontendo)
+
+local nontendo_2x = gfx.font.new("font/Nontendo-Bold-2x")
+assert(nontendo_2x)
+
+-- Image assets
 
 local tt_turn_device = gfx.image.new("img/ui/T_Tutorial_1")
 assert(tt_turn_device)
@@ -33,6 +38,9 @@ assert(tt_mic_blow)
 local bg_tower = gfx.image.new("img/T_Tower_BG")
 assert(bg_tower)
 
+local bg_tower_ruins = gfx.image.new("img/T_Tower_BG_Ruins")
+assert(bg_tower_ruins)
+
 local human = gfx.imagetable.new("img/T_Spritesheet_Human")
 assert(human)
 
@@ -50,6 +58,12 @@ assert(ui_button)
 
 local ui_hourglass = gfx.imagetable.new("img/ui/T_Spritesheet_Hourglass")
 assert(ui_hourglass)
+
+local ui_btn_a = gfx.image.new("img/ui/T_BTN_A")
+assert(ui_btn_a)
+
+local ui_gameover = gfx.image.new("img/ui/T_GameOver")
+assert(ui_gameover)
 
 -- Sound assets
 
@@ -117,6 +131,8 @@ local BLINK_SPEED <const> = 1.0
 
 -- End parameters to tweak
 
+local score = 0
+
 local tutorial_step = 1
 local tutorial_completion = 0
 
@@ -154,6 +170,10 @@ function math.clamp(x, min, max)
     return math.max(math.min(x, max), min)
 end
 
+local function is_in_tutorial()
+    return tutorial_step < 9
+end
+
 local function process_random_counter()
     rand_reach_counter -= 1
     if rand_reach_counter <= 0 then
@@ -172,6 +192,10 @@ local function generate_pad_combination()
 end
 
 local function reset()
+    pd.resetElapsedTime()
+
+    score = 0
+
     pad_combination = {}
     generate_pad_combination()
     pad_current_key = 1
@@ -289,7 +313,7 @@ local function check_game_over()
 end
 
 local function draw_human()
-    if is_game_running or tutorial_step < 9 then
+    if is_game_running or is_in_tutorial() then
         local human_id = math.floor(pad_current * 4) + 1
         human_id = math.clamp(human_id, 1, 4)
         if is_blowing then
@@ -300,13 +324,17 @@ local function draw_human()
 end
 
 local function draw_tower()
-    bg_tower:draw(264, 96)
+    if is_game_running or is_in_tutorial() then
+        bg_tower:draw(264, 96)
+    else
+        bg_tower_ruins:draw(264, 96)
+    end
     if (crank_current >= 0.1 and crank_current <= 0.9) or is_blinking or not is_game_running then
         for i = 1, 6 do
-            tower:drawImage(2, 305, 240 - (240 * crank_current) + (37 * i))
+            tower:drawImage(2, 300, 240 - (240 * crank_current) + (41 * i))
         end
-        tower:drawImage(1, 305, 240 - (240 * crank_current))
-        tower:drawImage(3, 305, 203)
+        tower:drawImage(1, 300, 240 - (240 * crank_current))
+        tower:drawImage(3, 300, 199)
     end
 end
 
@@ -369,6 +397,8 @@ local function draw_tutorial_microphone()
     gfx.drawCircleInRect(180, 110, 110, 110)
 end
 
+pd.resetElapsedTime()
+
 snd.micinput.startListening()
 pd.startAccelerometer()
 
@@ -380,6 +410,10 @@ is_game_running = false
 
 function pd.update()
     gfx.clear(gfx.kColorBlack)
+
+    if is_game_running and not is_in_tutorial() then
+        score = math.floor(pd.getElapsedTime() * 2)
+    end
 
     if tutorial_step > 8 then
         if is_game_running then
@@ -414,7 +448,11 @@ function pd.update()
         gfx.drawCircleInRect(180, 110, 110, 110)
 
         draw_keys()
-        draw_hourglass()
+
+        gfx.setImageDrawMode(playdate.graphics.kDrawModeNXOR)
+        gfx.setFont(nontendo_2x)
+        gfx.drawTextAligned(score, 385, 15, kTextAlignment.right)
+        gfx.setImageDrawMode(playdate.graphics.kDrawModeCopy)
     end
 
     if is_game_running == false and tutorial_step > 8 then
@@ -423,7 +461,15 @@ function pd.update()
         gfx.setColor(gfx.kColorXOR)
         gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer8x8)
         gfx.fillRect(0, 0, 400, 240)
+        ui_gameover:drawRotated(200, 100, math.sin(pd.getElapsedTime() * 5) * 5)
+        gfx.setImageDrawMode(playdate.graphics.kDrawModeFillWhite)
+        gfx.setFont(nontendo_2x)
+        gfx.drawTextAligned("Press", 185, 200, kTextAlignment.center)
+        gfx.setImageDrawMode(playdate.graphics.kDrawModeCopy)
+        ui_btn_a:drawRotated(240, 210, 0, 0.75)
     end
+
+    tutorial_step = 9
 
     if tutorial_step == 1 then
         local _, y, _ = pd.readAccelerometer()
@@ -437,7 +483,7 @@ function pd.update()
     elseif tutorial_step == 2 then
         process_tutorial(true, 0.2)
         draw_base_panel_tutorial()
-        tt_dir_arrows:drawCentered(200, 120)
+        tt_dir_arrows:drawCentered(200, 110)
         gfx.drawTextAligned("Tap tap directionals tap tap idk man...", 200, 195, kTextAlignment.center)
     elseif tutorial_step == 3 then
         -- Tutorial pad
@@ -456,7 +502,7 @@ function pd.update()
     elseif tutorial_step == 6 then
         process_tutorial(true, 0.2)
         draw_base_panel_tutorial()
-        tt_turn_crank:drawCentered(200, 120)
+        tt_turn_crank:drawCentered(200, 100)
         gfx.drawTextAligned("Turn the crank clock and counterclockwise to \nbalance industrial growth!", 200, 185,
             kTextAlignment.center)
     elseif tutorial_step == 7 then

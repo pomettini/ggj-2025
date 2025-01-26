@@ -8,14 +8,27 @@ local snd <const> = playdate.sound
 
 -- Image assets
 
-local tt_turn_device = gfx.image.new("img/ui/T_Tutorial_1.png")
+local nontendo = gfx.font.new("font/Nontendo-Bold")
+assert(nontendo)
+gfx.setFont(nontendo)
+
+local tt_turn_device = gfx.image.new("img/ui/T_Tutorial_1")
 assert(tt_turn_device)
 
-local tt_base_panel = gfx.image.new("img/ui/T_BasePanel.png")
+local tt_base_panel = gfx.image.new("img/ui/T_BasePanel")
 assert(tt_base_panel)
 
 local tt_bubble = gfx.image.new("img/T_TutorialBubblet")
 assert(tt_bubble)
+
+local tt_dir_arrows = gfx.image.new("img/ui/T_DirectionalArrows")
+assert(tt_dir_arrows)
+
+local tt_turn_crank = gfx.image.new("img/ui/T_TurnCrank")
+assert(tt_turn_crank)
+
+local tt_mic_blow = gfx.image.new("img/ui/T_MicBlow")
+assert(tt_mic_blow)
 
 local bg_tower = gfx.image.new("img/T_Tower_BG")
 assert(bg_tower)
@@ -42,9 +55,11 @@ assert(ui_hourglass)
 
 local music_main = snd.sampleplayer.new("sfx/mega")
 assert(music_main)
+music_main:setVolume(0.9)
 
 local music_game_over = snd.sampleplayer.new("sfx/morte")
 assert(music_game_over)
+music_game_over:setVolume(0.9)
 
 local sfx_factory = snd.sampleplayer.new("sfx/fabbrica")
 assert(sfx_factory)
@@ -68,7 +83,7 @@ local sfx_bubble_explode = snd.sampleplayer.new("sfx/scoppia")
 assert(sfx_bubble_explode)
 
 local sfx_smoke = snd.sampleplayer.new("sfx/fumo")
-assert(sfx_bubble)
+assert(sfx_smoke)
 
 local KEYS <const> = { 4, 2, 8, 1 }
 local KEYS_ANGLE <const> = { 0, 90, 180, 270 }
@@ -274,7 +289,7 @@ local function check_game_over()
 end
 
 local function draw_human()
-    if is_game_running then
+    if is_game_running or tutorial_step < 9 then
         local human_id = math.floor(pad_current * 4) + 1
         human_id = math.clamp(human_id, 1, 4)
         if is_blowing then
@@ -285,6 +300,7 @@ local function draw_human()
 end
 
 local function draw_tower()
+    bg_tower:draw(264, 96)
     if (crank_current >= 0.1 and crank_current <= 0.9) or is_blinking or not is_game_running then
         for i = 1, 6 do
             tower:drawImage(2, 305, 240 - (240 * crank_current) + (37 * i))
@@ -295,6 +311,7 @@ local function draw_tower()
 end
 
 local function draw_bubble()
+    stick:draw(158, 130)
     if (noise_current >= 0.1 and noise_current <= 0.9) or is_blinking or not is_game_running then
         bubble:drawScaled(180, 170 - (60 * noise_current), noise_current)
     end
@@ -331,9 +348,25 @@ local function process_tutorial(is_on, multiplier)
         end
     else
         if tutorial_completion >= 0 then
-            tutorial_completion -= 0.02
+            tutorial_completion -= 0.01
         end
     end
+end
+
+local function draw_base_panel_tutorial()
+    gfx.clear(gfx.kColorBlack)
+    tt_base_panel:drawCentered(200, 120)
+end
+
+local function draw_bubble_tutorial()
+    tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+end
+
+local function draw_tutorial_microphone()
+    draw_bubble()
+    gfx.setColor(gfx.kColorWhite)
+    gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
+    gfx.drawCircleInRect(180, 110, 110, 110)
 end
 
 snd.micinput.startListening()
@@ -348,49 +381,43 @@ is_game_running = false
 function pd.update()
     gfx.clear(gfx.kColorBlack)
 
-    if is_game_running then
-        if not music_main:isPlaying() then
-            music_main:play(0)
+    if tutorial_step > 8 then
+        if is_game_running then
+            if not music_main:isPlaying() then
+                music_main:play(0)
+            end
+            if music_game_over:isPlaying() then
+                music_game_over:stop()
+            end
+            process_random_counter()
+            process_inputs()
+            process_increment()
+            process_decay(rand_value)
+            process_clamping()
+            check_game_over()
+        else
+            if music_main:isPlaying() then
+                music_main:stop()
+            end
+            local _, pressed, _ = pd.getButtonState()
+            if pressed >= 16 and tutorial_step > 5 then
+                reset()
+            end
         end
-        if music_game_over:isPlaying() then
-            music_game_over:stop()
-        end
-        process_random_counter()
-        process_inputs()
-        process_increment()
-        process_decay(rand_value)
-        process_clamping()
-        check_game_over()
-    else
-        if music_main:isPlaying() then
-            music_main:stop()
-        end
-        local _, pressed, _ = pd.getButtonState()
-        if pressed >= 16 and tutorial_step > 5 then
-            reset()
-        end
+
+        draw_human()
+        draw_tower()
+        draw_bubble()
+
+        gfx.setColor(gfx.kColorWhite)
+        gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
+        gfx.drawCircleInRect(180, 110, 110, 110)
+
+        draw_keys()
+        draw_hourglass()
     end
 
-    bg_tower:draw(264, 96)
-
-    -- test = { math.floor(0.1 * 4) + 1, math.floor(0.33 * 4) + 1, math.floor(0.66 * 4) + 1, math.floor(0.9 * 4) + 1 }
-    -- printTable(test)
-
-    draw_human()
-    draw_tower()
-
-    stick:draw(158, 130)
-
-    draw_bubble()
-
-    gfx.setColor(gfx.kColorWhite)
-    gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
-    gfx.drawCircleInRect(180, 110, 110, 110)
-
-    draw_keys()
-    draw_hourglass()
-
-    if is_game_running == false then
+    if is_game_running == false and tutorial_step > 8 then
         sfx_factory:stop()
         human:drawImage(9, 0, 0)
         gfx.setColor(gfx.kColorXOR)
@@ -405,25 +432,38 @@ function pd.update()
         end
         gfx.clear(gfx.kColorBlack)
         tt_turn_device:drawCentered(200, 120)
-        tt_bubble:drawRotated(200, 120, 0, (tutorial_completion * 4) - 0.1)
+        gfx.drawTextAligned("Hold your Playdate like this!", 200, 195, kTextAlignment.center)
+        draw_bubble_tutorial()
     elseif tutorial_step == 2 then
-        local _, pressed, _ = pd.getButtonState()
-        process_tutorial(pressed > 0 and pressed < 9, 30)
-        gfx.clear(gfx.kColorBlack)
-        tt_base_panel:drawCentered(200, 120)
-        tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+        process_tutorial(true, 0.2)
+        draw_base_panel_tutorial()
+        tt_dir_arrows:drawCentered(200, 120)
+        gfx.drawTextAligned("Tap tap directionals tap tap idk man...", 200, 195, kTextAlignment.center)
     elseif tutorial_step == 3 then
-        process_tutorial(snd.micinput.getLevel() >= 0.1, 2)
-        gfx.clear(gfx.kColorBlack)
-        tt_base_panel:drawCentered(200, 120)
-        tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+        -- Tutorial pad
+        process_tutorial(true, 0.2)
+        draw_human()
+        draw_keys()
     elseif tutorial_step == 4 then
-        _, crank_amount = pd.getCrankChange()
-        process_tutorial(crank_amount >= 0.1, 1)
-        gfx.clear(gfx.kColorBlack)
-        tt_base_panel:drawCentered(200, 120)
-        tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+        process_tutorial(true, 0.2)
+        draw_base_panel_tutorial()
+        tt_mic_blow:drawCentered(200, 120)
+        gfx.drawTextAligned("Blow into the mic to keep the bubble inflated!", 200, 195, kTextAlignment.center)
     elseif tutorial_step == 5 then
+        -- Tutorial bubble
+        process_tutorial(true, 0.2)
+        draw_tutorial_microphone()
+    elseif tutorial_step == 6 then
+        process_tutorial(true, 0.2)
+        draw_base_panel_tutorial()
+        tt_turn_crank:drawCentered(200, 120)
+        gfx.drawTextAligned("Turn the crank clock and counterclockwise to \nbalance industrial growth!", 200, 185,
+            kTextAlignment.center)
+    elseif tutorial_step == 7 then
+        -- Tutorial crank
+        process_tutorial(true, 0.2)
+        draw_tower()
+    elseif tutorial_step == 8 then
         is_game_running = true
         tutorial_step += 1
     end

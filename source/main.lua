@@ -11,6 +11,12 @@ local snd <const> = playdate.sound
 local tt_turn_device = gfx.image.new("img/ui/T_Tutorial_1.png")
 assert(tt_turn_device)
 
+local tt_base_panel = gfx.image.new("img/ui/T_BasePanel.png")
+assert(tt_base_panel)
+
+local tt_bubble = gfx.image.new("img/T_TutorialBubblet")
+assert(tt_bubble)
+
 local bg_tower = gfx.image.new("img/T_Tower_BG")
 assert(bg_tower)
 
@@ -96,6 +102,9 @@ local BLINK_SPEED <const> = 1.0
 
 -- End parameters to tweak
 
+local tutorial_step = 1
+local tutorial_completion = 0
+
 local is_game_running = false
 
 -- 1-4 NESO
@@ -179,7 +188,7 @@ end
 
 local function process_inputs()
     local _, pressed, _ = pd.getButtonState()
-    if pressed ~= 0 then
+    if pressed > 0 and pressed < 9 then
         if pressed == KEYS[pad_combination[pad_current_key]] then
             sfx_input:play()
             pad_current_key += 1
@@ -313,7 +322,22 @@ local function draw_hourglass()
     end
 end
 
+local function process_tutorial(is_on, multiplier)
+    if is_on then
+        tutorial_completion += 0.02 * multiplier
+        if tutorial_completion >= 1 then
+            tutorial_completion = 0
+            tutorial_step += 1
+        end
+    else
+        if tutorial_completion >= 0 then
+            tutorial_completion -= 0.02
+        end
+    end
+end
+
 snd.micinput.startListening()
+pd.startAccelerometer()
 
 pd.display.setRefreshRate(50)
 
@@ -322,7 +346,7 @@ reset()
 is_game_running = false
 
 function pd.update()
-    gfx.clear(playdate.graphics.kColorBlack)
+    gfx.clear(gfx.kColorBlack)
 
     if is_game_running then
         if not music_main:isPlaying() then
@@ -342,7 +366,7 @@ function pd.update()
             music_main:stop()
         end
         local _, pressed, _ = pd.getButtonState()
-        if pressed >= 16 then
+        if pressed >= 16 and tutorial_step > 5 then
             reset()
         end
     end
@@ -374,9 +398,40 @@ function pd.update()
         gfx.fillRect(0, 0, 400, 240)
     end
 
-    pd.drawFPS(0, 0)
+    if tutorial_step == 1 then
+        local _, y, _ = pd.readAccelerometer()
+        if pd.accelerometerIsRunning() then
+            process_tutorial(y >= 0.40 and y <= 0.50, 1)
+        end
+        gfx.clear(gfx.kColorBlack)
+        tt_turn_device:drawCentered(200, 120)
+        tt_bubble:drawRotated(200, 120, 0, (tutorial_completion * 4) - 0.1)
+    elseif tutorial_step == 2 then
+        local _, pressed, _ = pd.getButtonState()
+        process_tutorial(pressed > 0 and pressed < 9, 30)
+        gfx.clear(gfx.kColorBlack)
+        tt_base_panel:drawCentered(200, 120)
+        tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+    elseif tutorial_step == 3 then
+        process_tutorial(snd.micinput.getLevel() >= 0.1, 2)
+        gfx.clear(gfx.kColorBlack)
+        tt_base_panel:drawCentered(200, 120)
+        tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+    elseif tutorial_step == 4 then
+        _, crank_amount = pd.getCrankChange()
+        process_tutorial(crank_amount >= 0.1, 1)
+        gfx.clear(gfx.kColorBlack)
+        tt_base_panel:drawCentered(200, 120)
+        tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+    elseif tutorial_step == 5 then
+        is_game_running = true
+        tutorial_step += 1
+    end
+
+    -- pd.drawFPS(0, 0)
 end
 
 function pd.deviceDidUnlock()
     snd.micinput.startListening()
+    pd.startAccelerometer()
 end

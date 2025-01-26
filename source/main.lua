@@ -205,10 +205,12 @@ local function process_random_counter()
 end
 
 local function generate_pad_combination()
-    local curr_elements = #pad_combination + 1
-    curr_elements = math.clamp(curr_elements, 0, PAD_MAX_INPUTS)
+    -- local curr_elements = #pad_combination + 1
+    -- curr_elements = math.clamp(curr_elements, 0, PAD_MAX_INPUTS)
+    local elements_to_add = math.floor(pad_current * 4) + 2
+    elements_to_add = math.clamp(elements_to_add, 2, 6)
     pad_combination = {}
-    for i = 1, curr_elements do
+    for i = 1, elements_to_add do
         table.insert(pad_combination, math.random(1, 4))
     end
 end
@@ -218,11 +220,11 @@ local function reset()
 
     score = 0
 
+    pad_current_key = 1
+    pad_current = PAD_START
+
     pad_combination = {}
     generate_pad_combination()
-    pad_current_key = 1
-
-    pad_current = PAD_START
 
     noise_amount = 0
     noise_current = NOISE_START

@@ -1,8 +1,8 @@
-name=GGJ-2025
-author=
+name=Bubble is you
+author=Those in a bubble
 description=
-bundleID=
+bundleID=com.bubble.isyou
 version=1.0.0
 buildNumber=1
 pdxversion=20601
-buildtime=791207546
+buildtime=791209815

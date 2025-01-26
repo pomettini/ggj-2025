@@ -17,7 +17,7 @@ assert(nontendo_2x)
 
 -- Image assets
 
-local tt_turn_device = gfx.image.new("img/ui/T_Tutorial_1")
+local tt_turn_device = gfx.image.new("img/ui/T_RotatePlaydate")
 assert(tt_turn_device)
 
 local tt_base_panel = gfx.image.new("img/ui/T_BasePanel")
@@ -53,6 +53,12 @@ assert(bubble)
 local tower = gfx.imagetable.new("img/T_Spritesheet_Tower")
 assert(tower)
 
+local bubble_sheet = gfx.imagetable.new("img/T_Bubble-sheet")
+assert(bubble_sheet)
+
+local safe_area_bubble = gfx.image.new("img/T_SafeAreaBubble")
+assert(safe_area_bubble)
+
 local ui_button = gfx.image.new("img/ui/T_BTN_Directional")
 assert(ui_button)
 
@@ -65,8 +71,11 @@ assert(ui_btn_a)
 local ui_gameover = gfx.image.new("img/ui/T_GameOver")
 assert(ui_gameover)
 
-local ui_bg_factories = gfx.image.new("img/T_BG_Factories.png")
+local ui_bg_factories = gfx.image.new("img/T_BG_Factories")
 assert(ui_bg_factories)
+
+local ui_tick = gfx.image.new("img/ui/T_Tick")
+assert(ui_tick)
 
 -- Sound assets
 
@@ -342,6 +351,7 @@ local function draw_tower()
 end
 
 local function draw_bubble()
+    safe_area_bubble:draw(180, 110)
     stick:draw(158, 130)
     if (noise_current >= 0.1 and noise_current <= 0.9) or is_blinking or not is_game_running then
         bubble:drawScaled(180, 170 - (60 * noise_current), noise_current)
@@ -390,14 +400,17 @@ local function draw_base_panel_tutorial()
 end
 
 local function draw_bubble_tutorial()
-    tt_bubble:drawRotated(200, 120, 0, tutorial_completion * 4)
+    tt_bubble:drawRotated(200, 110, 0, math.clamp(tutorial_completion, 0, 0.85) * 1.5)
+    if tutorial_completion >= 0.85 then
+        ui_tick:drawCentered(200, 110)
+    end
 end
 
-local function draw_tutorial_microphone()
-    draw_bubble()
-    gfx.setColor(gfx.kColorWhite)
-    gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
-    gfx.drawCircleInRect(180, 110, 110, 110)
+local function draw_score()
+    gfx.setImageDrawMode(playdate.graphics.kDrawModeFillWhite)
+    gfx.setFont(nontendo_2x)
+    gfx.drawTextAligned(score, 385, 15, kTextAlignment.right)
+    gfx.setImageDrawMode(playdate.graphics.kDrawModeCopy)
 end
 
 pd.resetElapsedTime()
@@ -414,7 +427,7 @@ is_game_running = false
 function pd.update()
     gfx.clear(gfx.kColorBlack)
 
-    if is_game_running and not is_in_tutorial() then
+    if is_game_running then
         score = math.floor(pd.getElapsedTime() * 2 * basic_speed)
     end
 
@@ -448,16 +461,12 @@ function pd.update()
         draw_tower()
         draw_bubble()
 
-        gfx.setColor(gfx.kColorWhite)
-        gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
-        gfx.drawCircleInRect(180, 110, 110, 110)
+        -- gfx.setColor(gfx.kColorWhite)
+        -- gfx.setDitherPattern(0.8, gfx.image.kDitherTypeBayer8x8)
+        -- gfx.drawCircleInRect(180, 110, 110, 110)
 
         draw_keys()
-
-        gfx.setImageDrawMode(playdate.graphics.kDrawModeNXOR)
-        gfx.setFont(nontendo_2x)
-        gfx.drawTextAligned(score, 385, 15, kTextAlignment.right)
-        gfx.setImageDrawMode(playdate.graphics.kDrawModeCopy)
+        draw_score()
     end
 
     if is_game_running == false and tutorial_step > 8 then
@@ -472,6 +481,7 @@ function pd.update()
         gfx.drawTextAligned("Press", 185, 200, kTextAlignment.center)
         gfx.setImageDrawMode(playdate.graphics.kDrawModeCopy)
         ui_btn_a:drawRotated(240, 210, 0, 0.75)
+        draw_score()
     end
 
     -- tutorial_step = 9
@@ -481,41 +491,41 @@ function pd.update()
         if pd.accelerometerIsRunning() then
             process_tutorial(y >= 0.40 and y <= 0.50, 1)
         end
-        gfx.clear(gfx.kColorBlack)
-        tt_turn_device:drawCentered(200, 120)
+        draw_base_panel_tutorial()
+        tt_turn_device:drawCentered(200, 110)
         gfx.drawTextAligned("Hold your Playdate like this!", 200, 195, kTextAlignment.center)
         draw_bubble_tutorial()
     elseif tutorial_step == 2 then
-        process_tutorial(true, 0.2)
+        process_tutorial(true, 0.33)
         draw_base_panel_tutorial()
         tt_dir_arrows:drawCentered(200, 110)
         gfx.drawTextAligned("Tap tap directionals tap tap idk man...", 200, 195, kTextAlignment.center)
     elseif tutorial_step == 3 then
         -- Tutorial pad
-        process_tutorial(true, 0.2)
+        process_tutorial(true, 0.33)
         draw_human()
         draw_keys()
     elseif tutorial_step == 4 then
-        process_tutorial(true, 0.2)
+        process_tutorial(true, 0.33)
         draw_base_panel_tutorial()
         tt_mic_blow:drawCentered(200, 120)
         gfx.drawTextAligned("Blow into the mic to keep the bubble inflated!", 200, 195, kTextAlignment.center)
     elseif tutorial_step == 5 then
         -- Tutorial bubble
-        process_tutorial(true, 0.2)
-        draw_tutorial_microphone()
+        process_tutorial(true, 0.33)
+        draw_bubble()
     elseif tutorial_step == 6 then
-        process_tutorial(true, 0.2)
+        process_tutorial(true, 0.33)
         draw_base_panel_tutorial()
         tt_turn_crank:drawCentered(200, 100)
         gfx.drawTextAligned("Turn the crank clock and counterclockwise to \nbalance industrial growth!", 200, 185,
             kTextAlignment.center)
     elseif tutorial_step == 7 then
         -- Tutorial crank
-        process_tutorial(true, 0.2)
+        process_tutorial(true, 0.33)
         draw_tower()
     elseif tutorial_step == 8 then
-        is_game_running = true
+        reset()
         tutorial_step += 1
     end
 

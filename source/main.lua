@@ -59,6 +59,9 @@ assert(bubble_sheet)
 local safe_area_bubble = gfx.image.new("img/T_SafeAreaBubble")
 assert(safe_area_bubble)
 
+local smoke_particle = gfx.imagetable.new("img/T_Smoke")
+assert(smoke_particle)
+
 local ui_button = gfx.image.new("img/ui/T_BTN_Directional")
 assert(ui_button)
 
@@ -77,6 +80,9 @@ assert(ui_bg_factories)
 local ui_tick = gfx.image.new("img/ui/T_Tick")
 assert(ui_tick)
 
+local ui_hold_playdate = gfx.image.new("img/ui/T_HoldPlaydat")
+assert(ui_hold_playdate)
+
 -- Sound assets
 
 local music_main = snd.sampleplayer.new("sfx/mega")
@@ -86,6 +92,10 @@ music_main:setVolume(0.9)
 local music_game_over = snd.sampleplayer.new("sfx/morte")
 assert(music_game_over)
 music_game_over:setVolume(0.9)
+
+local music_tutorial = snd.sampleplayer.new("sfx/preludo_shrunk")
+assert(music_tutorial)
+music_tutorial:setVolume(0.9)
 
 local sfx_factory = snd.sampleplayer.new("sfx/fabbrica")
 assert(sfx_factory)
@@ -413,6 +423,10 @@ local function draw_score()
     gfx.setImageDrawMode(playdate.graphics.kDrawModeCopy)
 end
 
+local function draw_smoke()
+    smoke_particle:drawImage((math.floor(score) % 3) + 1, 254, 0)
+end
+
 pd.resetElapsedTime()
 
 snd.micinput.startListening()
@@ -458,6 +472,7 @@ function pd.update()
         ui_bg_factories:draw(0, 74)
 
         draw_human()
+        draw_smoke()
         draw_tower()
         draw_bubble()
         draw_keys()
@@ -480,6 +495,7 @@ function pd.update()
         draw_score()
     end
 
+    -- Debug: skips tutorial
     -- tutorial_step = 9
 
     if tutorial_step == 1 then
@@ -488,14 +504,15 @@ function pd.update()
             process_tutorial(y >= 0.40 and y <= 0.50, 1)
         end
         draw_base_panel_tutorial()
-        tt_turn_device:drawCentered(200, 110)
+        tt_turn_device:drawRotated(150, 115, 0, 0.75)
+        ui_hold_playdate:drawCentered(295, 110)
         gfx.drawTextAligned("Hold your Playdate like this!", 200, 195, kTextAlignment.center)
         draw_bubble_tutorial()
     elseif tutorial_step == 2 then
-        process_tutorial(true, 0.33)
+        process_tutorial(true, 0.25)
         draw_base_panel_tutorial()
-        tt_dir_arrows:drawCentered(200, 110)
-        gfx.drawTextAligned("Tap tap directionals tap tap idk man...", 200, 195, kTextAlignment.center)
+        tt_dir_arrows:drawCentered(200, 105)
+        gfx.drawTextAligned("Use the correct sequence on the d-pad\nto slow the aging process", 200, 180, kTextAlignment.center)
     elseif tutorial_step == 3 then
         -- Tutorial pad
         process_tutorial(true, 0.33)
@@ -515,7 +532,7 @@ function pd.update()
         process_tutorial(true, 0.33)
         draw_base_panel_tutorial()
         tt_turn_crank:drawCentered(200, 100)
-        gfx.drawTextAligned("Turn the crank clock and counterclockwise to \nbalance industrial growth!", 200, 185,
+        gfx.drawTextAligned("Turn the crank clock and counterclockwise to\nbalance industrial growth!", 200, 180,
             kTextAlignment.center)
     elseif tutorial_step == 7 then
         -- Tutorial crank
@@ -524,6 +541,16 @@ function pd.update()
     elseif tutorial_step == 8 then
         reset()
         tutorial_step += 1
+    end
+
+    if is_in_tutorial() then
+        if not music_tutorial:isPlaying() then
+            music_tutorial:play(0)
+        end
+    else
+        if music_tutorial:isPlaying() then
+            music_tutorial:stop()
+        end
     end
 
     -- pd.drawFPS(0, 0)
